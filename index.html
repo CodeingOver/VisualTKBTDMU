@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Visual TKB – Lên kế hoạch đăng ký môn</title>
+  <meta name="description" content="Trực quan hóa thời khóa biểu DMU – xem trước lịch học ngay khi lên kế hoạch đăng ký môn." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="style.css" />
+  <!-- SheetJS for reading .xlsx -->
+  <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
+</head>
+<body>
+  <div class="app">
+
+    <!-- ═══ SIDEBAR ═══ -->
+    <aside class="sidebar" id="sidebar">
+      <div class="sidebar-header">
+        <div class="logo">
+          <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+          Visual TKB
+        </div>
+        <span class="logo-sub">DMU – Kế hoạch đăng ký</span>
+      </div>
+
+      <!-- Upload area -->
+      <div class="upload-area" id="upload-area">
+        <input type="file" id="file-input" accept=".xlsx" hidden />
+        <div class="upload-icon">
+          <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+        </div>
+        <p class="upload-title">Tải file DSDKMH.xlsx</p>
+        <p class="upload-hint">Kéo thả hoặc nhấn để chọn file</p>
+      </div>
+
+      <!-- Credits summary -->
+      <div class="credits-panel" id="credits-panel" style="display:none">
+        <div class="credits-row">
+          <div class="credit-item">
+            <span class="credit-value" id="selected-credits">0</span>
+            <span class="credit-label">TC đang xem</span>
+          </div>
+          <div class="credit-divider"></div>
+          <div class="credit-item">
+            <span class="credit-value registered" id="registered-credits">0</span>
+            <span class="credit-label">TC đã đăng ký</span>
+          </div>
+          <div class="credit-divider"></div>
+          <div class="credit-item">
+            <span class="credit-value total" id="total-credits">0</span>
+            <span class="credit-label">Tổng TC</span>
+          </div>
+        </div>
+        <div class="conflict-badge" id="conflict-badge" style="display:none">
+          <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+          <span id="conflict-text">0 xung đột</span>
+        </div>
+      </div>
+
+      <!-- Subject list controls -->
+      <div class="list-controls" id="list-controls" style="display:none">
+        <span class="list-title">Danh sách môn học</span>
+        <div class="list-actions">
+          <button id="btn-select-all" class="btn-text" title="Chọn tất cả">Tất cả</button>
+          <span class="sep">·</span>
+          <button id="btn-deselect-all" class="btn-text" title="Bỏ chọn tất cả">Bỏ</button>
+          <span class="sep">·</span>
+          <button id="btn-reset" class="btn-text" title="Về trạng thái đã đăng ký">Reset</button>
+        </div>
+      </div>
+
+      <!-- Subject list -->
+      <div class="subject-list" id="subject-list">
+        <!-- Populated by JS -->
+      </div>
+    </aside>
+
+    <!-- ═══ MAIN CONTENT ═══ -->
+    <main class="main" id="main-content">
+
+      <!-- Empty / Welcome state -->
+      <div class="welcome-state" id="welcome-state">
+        <div class="welcome-icon">
+          <svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1" stroke-linecap="round" stroke-linejoin="round" opacity="0.3"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/><line x1="8" y1="14" x2="8" y2="14"/><line x1="12" y1="14" x2="12" y2="14"/><line x1="16" y1="14" x2="16" y2="14"/></svg>
+        </div>
+        <h2>Chưa tải file dữ liệu</h2>
+        <p>Tải file <strong>DSDKMH.xlsx</strong> bên trái để bắt đầu lên kế hoạch đăng ký môn và xem trước thời khóa biểu.</p>
+        <button class="btn-primary" onclick="document.getElementById('upload-area').click()">
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+          Tải file Excel
+        </button>
+      </div>
+
+      <!-- Timetable state -->
+      <div class="timetable-state" id="timetable-state" style="display:none">
+
+        <!-- Week navigation -->
+        <div class="week-nav">
+          <button class="week-btn" id="prev-week" title="Tuần trước">
+            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="15 18 9 12 15 6"/></svg>
+          </button>
+          <div class="week-info">
+            <span class="week-label" id="week-label">–</span>
+            <span class="week-sub" id="week-sub"></span>
+          </div>
+          <button class="week-btn" id="next-week" title="Tuần tiếp">
+            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="9 18 15 12 9 6"/></svg>
+          </button>
+          <button class="week-btn today-btn" id="btn-today" title="Về tuần có lớp đầu tiên">
+            <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+            Tuần đầu
+          </button>
+        </div>
+
+        <!-- Timetable grid container -->
+        <div class="timetable-scroll-wrap">
+          <div id="timetable-grid" class="timetable-grid-root">
+            <!-- Header + body generated by JS -->
+          </div>
+        </div>
+
+      </div>
+    </main>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
