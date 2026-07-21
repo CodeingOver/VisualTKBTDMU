@@ -16,7 +16,7 @@
 | Thành phần | Công nghệ | Ghi chú |
 |-----------|-----------|---------|
 | Cấu trúc | HTML5 (Semantic) | Single-page, không framework |
-| Giao diện | Vanilla CSS | CSS Variables, Grid, Flexbox |
+| Giao diện | Vanilla CSS | CSS Variables, Grid, Flexbox (Light theme) |
 | Logic | Vanilla JavaScript (ES2020) | Không framework, không build step |
 | Đọc Excel | [SheetJS xlsx 0.20.3](https://cdn.sheetjs.com) | Tải qua CDN |
 | Font chữ | [Inter – Google Fonts](https://fonts.google.com/specimen/Inter) | Tải qua CDN |
@@ -60,9 +60,12 @@ VisualTKBTDMU/
 │   - parseExcel()     – SheetJS → objects     │
 │   - parseBuoiHoc()   – chuỗi → sessions     │
 │   - renderSubjectList() – cập nhật sidebar   │
-│   - renderTimetable()   – cập nhật grid      │
+│   - renderTimetable()   – hiển thị trục Tiết │
+│                           1-16 & auto refit  │
+│   - startTimeToTiet()  – map giờ → Tiết      │
 │   - detectConflicts()   – phát hiện trùng   │
 │   - positionSessions()  – xử lý chồng lịch  │
+│   - window.resize       – auto refit height  │
 └─────────────────────────────┬───────────────┘
                               │ FileReader API
 ┌─────────────────────────────▼───────────────┐

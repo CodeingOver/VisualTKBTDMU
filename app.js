@@ -4,11 +4,9 @@
 ═══════════════════════════════════════════════════════════════ */
 
 // ── Timetable constants ──────────────────────────────────────
-const GRID_START_H = 7;    // 07:00
-const GRID_END_H   = 21;   // 21:00
-const SLOT_MIN     = 15;   // minutes per grid slot
-const SLOT_PX      = 20;   // pixels per slot
-const PX_PER_MIN   = SLOT_PX / SLOT_MIN; // 20/15 ≈ 1.333 px/min
+const DEFAULT_GRID_START_H = 7;    // 07:00
+const DEFAULT_GRID_END_H   = 18;   // default 18:00
+const MAX_GRID_END_H       = 21;   // max evening hour
 
 // Column order: Mon=1, Tue=2, ..., Sat=6, Sun=0 (JS day)
 const DISPLAY_DAYS = [1, 2, 3, 4, 5, 6, 0];
@@ -20,11 +18,30 @@ const DAY_NAME_TO_IDX = {
   'Chủ Nhật': 0,
 };
 
-// Vivid, distinguishable palette (12 colors)
+// TDMU Official Tiết Time Table mapping
+const TIET_TIMES = {
+  1:  '07:00 - 07:50',
+  2:  '07:50 - 08:40',
+  3:  '08:40 - 09:30',
+  4:  '09:45 - 10:35',
+  5:  '10:35 - 11:25',
+  6:  '11:25 - 12:15',
+  7:  '13:00 - 13:50',
+  8:  '13:50 - 14:40',
+  9:  '14:40 - 15:30',
+  10: '15:45 - 16:35',
+  11: '16:35 - 17:25',
+  12: '17:25 - 18:15',
+  13: '18:30 - 19:20',
+  14: '19:20 - 20:10',
+  15: '20:10 - 21:00',
+};
+
+// Rich, high-contrast palette for light background (12 colors)
 const PALETTE = [
-  '#6366f1','#8b5cf6','#ec4899','#14b8a6',
-  '#f59e0b','#10b981','#f43f5e','#3b82f6',
-  '#a855f7','#06b6d4','#84cc16','#f97316',
+  '#4f46e5','#7c3aed','#db2777','#0d9488',
+  '#d97706','#059669','#e11d48','#2563eb',
+  '#9333ea','#0891b2','#65a30d','#ea580c',
 ];
 
 // ── App State ────────────────────────────────────────────────
@@ -44,15 +61,43 @@ function min2hhmm(min) {
   return `${String(Math.floor(min / 60)).padStart(2,'0')}:${String(min % 60).padStart(2,'0')}`;
 }
 
-/** pixels from top for a given "HH:MM" time */
-function timeToPx(hhmm) {
-  const totalMin = hhmm2min(hhmm) - GRID_START_H * 60;
-  return Math.round(totalMin * PX_PER_MIN);
+// ── Map "HH:MM" to Tiết index (1 to 15) based on official TDMU schedule ────
+function startTimeToTiet(hhmm) {
+  const min = hhmm2min(hhmm);
+  if (min <= 7 * 60 + 45)  return 1;   // 07:00 -> Tiết 1
+  if (min <= 8 * 60 + 35)  return 2;   // 07:50 -> Tiết 2
+  if (min <= 9 * 60 + 25)  return 3;   // 08:40 -> Tiết 3
+  if (min <= 10 * 60 + 30) return 4;   // 09:45 -> Tiết 4
+  if (min <= 11 * 60 + 20) return 5;   // 10:35 -> Tiết 5
+  if (min <= 12 * 60 + 15) return 6;   // 11:25 -> Tiết 6
+  if (min <= 13 * 60 + 45) return 7;   // 13:00 -> Tiết 7
+  if (min <= 14 * 60 + 35) return 8;   // 13:50 -> Tiết 8
+  if (min <= 15 * 60 + 25) return 9;   // 14:40 -> Tiết 9
+  if (min <= 16 * 60 + 30) return 10;  // 15:45 -> Tiết 10
+  if (min <= 17 * 60 + 20) return 11;  // 16:35 -> Tiết 11
+  if (min <= 18 * 60 + 15) return 12;  // 17:25 -> Tiết 12
+  if (min <= 19 * 60 + 15) return 13;  // 18:30 -> Tiết 13
+  if (min <= 20 * 60 + 05) return 14;  // 19:20 -> Tiết 14
+  return 15;                           // 20:10 -> Tiết 15
 }
 
-/** height in pixels for a duration */
-function durationPx(startHHMM, endHHMM) {
-  return Math.round((hhmm2min(endHHMM) - hhmm2min(startHHMM)) * PX_PER_MIN);
+function endTimeToTiet(hhmm) {
+  const min = hhmm2min(hhmm);
+  if (min <= 7 * 60 + 55)  return 1;   // 07:50 -> Tiết 1
+  if (min <= 8 * 60 + 45)  return 2;   // 08:40 -> Tiết 2
+  if (min <= 9 * 60 + 35)  return 3;   // 09:30 -> Tiết 3
+  if (min <= 10 * 60 + 40) return 4;   // 10:35 -> Tiết 4
+  if (min <= 11 * 60 + 30) return 5;   // 11:25 -> Tiết 5
+  if (min <= 12 * 60 + 30) return 6;   // 12:15 -> Tiết 6
+  if (min <= 13 * 60 + 55) return 7;   // 13:50 -> Tiết 7
+  if (min <= 14 * 60 + 45) return 8;   // 14:40 -> Tiết 8
+  if (min <= 15 * 60 + 35) return 9;   // 15:30 -> Tiết 9
+  if (min <= 16 * 60 + 40) return 10;  // 16:35 -> Tiết 10
+  if (min <= 17 * 60 + 30) return 11;  // 17:25 -> Tiết 11
+  if (min <= 18 * 60 + 25) return 12;  // 18:15 -> Tiết 12
+  if (min <= 19 * 60 + 25) return 13;  // 19:20 -> Tiết 13
+  if (min <= 20 * 60 + 15) return 14;  // 20:10 -> Tiết 14
+  return 15;                           // 21:00 -> Tiết 15
 }
 
 // ── Utility: Date ────────────────────────────────────────────
@@ -115,9 +160,9 @@ function parseBuoiHoc(raw) {
     if (!tMatch) continue;
     const [, startTime, endTime] = tMatch;
 
-    // Validate time is inside grid
-    if (hhmm2min(startTime) < GRID_START_H * 60 ||
-        hhmm2min(endTime)   > GRID_END_H * 60) continue;
+    // Validate time is valid day range (06:00 to 22:00)
+    if (hhmm2min(startTime) < 6 * 60 ||
+        hhmm2min(endTime)   > 22 * 60) continue;
 
     // Date range: "DD/MM/YY đến DD/MM/YY" or single "DD/MM/YY"
     let fromDate, toDate;
@@ -357,34 +402,53 @@ function renderTimetable() {
     badge.style.display = 'none';
   }
 
-  // Grid height
-  const gridH = ((GRID_END_H - GRID_START_H) * 60 / SLOT_MIN) * SLOT_PX;
+  // Determine dynamic max Tiết needed (default 12 to cover morning & afternoon)
+  let totalTietCount = 12;
+  for (const b of weekBlocks) {
+    const endT = endTimeToTiet(b.endTime);
+    if (endT > totalTietCount) totalTietCount = Math.min(15, endT);
+  }
+
+  // Calculate container available height for grid body
+  const wrapEl = document.querySelector('.timetable-scroll-wrap');
+  const wrapH = wrapEl && wrapEl.clientHeight > 100 ? wrapEl.clientHeight : 550;
+  
+  // Available height for tt-body = wrapH - header height (~34px) - wrapper paddings
+  const targetBodyH = Math.max(300, wrapH - 34);
+  const rowH = targetBodyH / totalTietCount;
+  const gridH = targetBodyH;
 
   // ── Build HTML ──
   let html = '';
 
   // Header
   html += `<div class="tt-header">`;
-  html += `<div class="tt-header-time"></div>`;
+  html += `<div class="tt-header-nav-btn" onclick="document.getElementById('prev-week').click()" title="Tuần trước"><b>←</b></div>`;
   for (let ci = 0; ci < 7; ci++) {
     const d = weekDates[ci];
     const todayCls = isToday(d) ? 'today-col' : '';
+    const dayDateStr = `(${String(d.getDate()).padStart(2,'0')}/${String(d.getMonth()+1).padStart(2,'0')})`;
     html += `
       <div class="tt-header-day ${todayCls}">
-        <div class="day-name-label">${DAY_LABELS[ci]}</div>
-        <div class="day-date-label">${d.getDate()}/${d.getMonth()+1}</div>
+        <span class="day-name-label">${DAY_LABELS[ci]}</span>
+        <span class="day-date-label">${dayDateStr}</span>
       </div>`;
   }
+  html += `<div class="tt-header-nav-btn" onclick="document.getElementById('next-week').click()" title="Tuần tiếp"><b>→</b></div>`;
   html += `</div>`;
 
   // Body
   html += `<div class="tt-body">`;
 
-  // Time axis
-  html += `<div class="tt-time-axis" style="height:${gridH}px">`;
-  for (let h = GRID_START_H; h <= GRID_END_H; h++) {
-    const top = ((h - GRID_START_H) * 60 / SLOT_MIN) * SLOT_PX;
-    html += `<div class="tt-time-label" style="top:${top}px">${String(h).padStart(2,'0')}:00</div>`;
+  // Left Tiết Axis
+  html += `<div class="tt-tiet-axis" style="height:${gridH}px">`;
+  for (let t = 1; t <= totalTietCount; t++) {
+    const timeStr = TIET_TIMES[t] || '';
+    html += `
+      <div class="tiet-label-cell">
+        <div class="tiet-name">Tiết ${t}</div>
+        <div class="tiet-time">${timeStr}</div>
+      </div>`;
   }
   html += `</div>`;
 
@@ -393,14 +457,10 @@ function renderTimetable() {
     const todayCls = isToday(weekDates[ci]) ? 'today-col' : '';
     html += `<div class="tt-day-col ${todayCls}" style="height:${gridH}px">`;
 
-    // Hour & half-hour lines
-    for (let h = GRID_START_H; h <= GRID_END_H; h++) {
-      const top = ((h - GRID_START_H) * 60 / SLOT_MIN) * SLOT_PX;
-      html += `<div class="tt-hour-line" style="top:${top}px"></div>`;
-      if (h < GRID_END_H) {
-        const halfTop = top + (30 / SLOT_MIN) * SLOT_PX;
-        html += `<div class="tt-half-line" style="top:${halfTop}px"></div>`;
-      }
+    // Horizontal Tiet grid lines
+    for (let t = 1; t <= totalTietCount; t++) {
+      const top = Math.round((t - 1) * rowH);
+      html += `<div class="tt-tiet-line" style="top:${top}px"></div>`;
     }
 
     // Session blocks for this column
@@ -408,16 +468,16 @@ function renderTimetable() {
     const positioned = positionSessions(colBlocks);
 
     for (const { sess, leftPct, widthPct } of positioned) {
-      const top    = timeToPx(sess.startTime);
-      const height = Math.max(durationPx(sess.startTime, sess.endTime), 28);
-      const color  = colorMap[sess.maMH];
-      const bg     = hexToRgba(color, 0.14);
+      const startT = startTimeToTiet(sess.startTime);
+      const endT   = Math.max(startT, endTimeToTiet(sess.endTime));
+      
+      const top    = Math.round((startT - 1) * rowH);
+      const height = Math.max(Math.round((endT - startT + 1) * rowH) - 1, 20);
       const key    = `${sess.maMH}|${ci}|${sess.startTime}`;
       const isConf = conflicts.has(key);
 
-      // Adjust left/right for side-by-side overlap display
-      const leftPx  = leftPct > 0 ? `calc(${leftPct}% + 2px)` : '3px';
-      const widthVal = widthPct < 100 ? `calc(${widthPct}% - 5px)` : 'calc(100% - 6px)';
+      const leftPx   = leftPct > 0 ? `calc(${leftPct}% + 2px)` : '2px';
+      const widthVal = widthPct < 100 ? `calc(${widthPct}% - 4px)` : 'calc(100% - 4px)';
 
       html += `
         <div class="session-block ${isConf ? 'conflict-block' : ''}"
@@ -426,19 +486,21 @@ function renderTimetable() {
                height:${height}px;
                left:${leftPx};
                width:${widthVal};
-               --s-color:${color};
-               --s-bg:${bg};
              "
              title="${sess.tenMH}&#10;${sess.startTime}–${sess.endTime}&#10;${sess.room}&#10;${sess.gv || ''}">
-          <div class="session-subject-name">${sess.tenMH}</div>
-          ${height > 50 ? `<div class="session-detail">${sess.room}${sess.nhom ? ' · ' + sess.nhom : ''}</div>` : ''}
-          ${height > 70 ? `<div class="session-time-tag">${sess.startTime}–${sess.endTime}</div>` : ''}
-          ${isConf ? `<div class="conflict-tag"><svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/></svg>Xung đột!</div>` : ''}
+          <div class="session-subject-name">${sess.tenMH}${sess.soTC ? ' (' + sess.soTC + ')' : ''} (${sess.maMH})</div>
+          ${height >= 34 && sess.nhom ? `<div class="session-detail"><b>Nhóm:</b> ${sess.nhom}</div>` : ''}
+          ${height >= 48 ? `<div class="session-detail"><b>Phòng:</b> ${sess.room}</div>` : ''}
+          ${height >= 62 && sess.gv ? `<div class="session-detail"><b>GV:</b> ${sess.gv}</div>` : ''}
+          ${isConf ? `<div class="conflict-tag">⚠ Xung đột!</div>` : ''}
         </div>`;
     }
 
     html += `</div>`; // .tt-day-col
   }
+
+  // Right Accent Bar
+  html += `<div class="tt-right-bar" style="height:${gridH}px"></div>`;
 
   html += `</div>`; // .tt-body
 
@@ -594,6 +656,94 @@ function init() {
       renderTimetable();
     }
   });
+
+  // Window resize: dynamic timetable height refit
+  window.addEventListener('resize', () => {
+    if (currentMonday) renderTimetable();
+  });
+}
+
+// ── Sample Excel generator & loader ────────────────────────────
+function getSampleRawData() {
+  return [
+    ["STT", "Mã môn học", "Tên môn học", "Mã LHP", "Loại LHP", "Số TC", "Bắt buộc", "Nhóm", "Giảng viên", "Lớp sinh viên", "Buổi học", "Đã học"],
+    [1, "KTCH011", "Tư tưởng Hồ Chí Minh", "KTCH011.01", "Lý thuyết", 2, "x", "KTCH.CQ.T104", "Nguyễn Văn Linh", "D20AT01", "Thứ 2,từ 07:00 đến 09:30,Ph I4.111-I4.111,GV Nguyễn Văn Linh,17/08/26 đến 23/11/26", "x"],
+    [2, "KTCH012", "Lịch sử Đảng Cộng sản Việt Nam", "KTCH012.01", "Lý thuyết", 2, "x", "KTCH.CQ.T104", "Phạm Hồng Kiên", "D20AT01", "Thứ 2,từ 13:00 đến 15:30,Ph F3.103-F3.103,GV Phạm Hồng Kiên,17/08/26 đến 23/11/26", "x"],
+    [3, "LING005", "An toàn và bảo mật thông tin", "LING005.02", "Lý thuyết", 2, "", "CNTT.CQ.T102", "Nguyễn Thành Phương", "D20AT01", "Thứ 3,từ 13:00 đến 15:30,Ph F3.102-F3.102,GV Nguyễn Thành Phương,17/08/26 đến 23/11/26", "x"],
+    [4, "KTPM034", "Kiến trúc và thiết kế phần mềm", "KTPM034.01", "Lý thuyết", 2, "", "CNTT.CQ.T104", "Nguyễn Xuân Cường", "D20AT01", "Thứ 4,từ 13:00 đến 15:30,Ph I3.206-I3.206,GV Nguyễn Xuân Cường,17/08/26 đến 23/11/26", "x"],
+    [5, "LING260", "Thực hành An toàn và bảo mật thông tin", "LING260.01", "Thực hành", 1, "", "CNTT.CQ.T105", "Nguyễn Thành Phương", "D20AT01", "Thứ 5,từ 07:00 đến 12:15,Ph I2.303 (PM14)-I2.303 (PM14),GV Nguyễn Thành Phương,17/08/26 đến 23/11/26", "x"],
+    [6, "LING210", "Quản lý dự án công nghệ thông tin", "LING210.01", "Lý thuyết", 3, "", "CNTT.CQ.T101", "Trần Bá Minh Sơn", "D20AT01", "Thứ 6,từ 13:00 đến 15:30,Ph I3.105-I3.105,GV Trần Bá Minh Sơn,17/08/26 đến 23/11/26", "x"],
+    [7, "KTPM035", "Thực hành Kiến trúc và thiết kế phần mềm", "KTPM035.01", "Thực hành", 2, "", "CNTT.CQ.T105", "Nguyễn Xuân Cường", "D20AT01", "Thứ 7,từ 13:00 đến 15:30,Ph C.202 (PM06)-C.202 (PM06),GV Nguyễn Xuân Cường,17/08/26 đến 23/11/26", "x"],
+    [8, "LTI0042", "Điện toán đám mây", "LTI0042.01", "Lý thuyết", 2, "x", "VCNS.CQ.T101", "Nguyễn Đình Thọ", "D20AT01", "Thứ 3,từ 09:45 đến 12:15,Ph I4.214,GV Nguyễn Đình Thọ,17/08/26 đến 23/11/26", ""],
+    [9, "LTI0310", "Quản trị hệ thống", "LTI0310.01", "Lý thuyết", 2, "x", "VCNS.CQ.T102", "Lê Tú Minh Trí", "D20AT01", "Thứ 5,từ 13:00 đến 15:30,Ph A4.104,GV Lê Tú Minh Trí,17/08/26 đến 23/11/26", ""]
+  ];
+}
+
+function downloadSampleExcel() {
+  if (typeof XLSX === 'undefined') return alert('Thư viện SheetJS chưa sẵn sàng.');
+  const raw = getSampleRawData();
+  const ws = XLSX.utils.aoa_to_sheet(raw);
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, "DSDKMH");
+  XLSX.writeFile(wb, "DSDKMH_Mau.xlsx");
+}
+
+async function loadSampleData() {
+  const rawRows = getSampleRawData();
+  const result = [];
+  for (let i = 1; i < rawRows.length; i++) {
+    const r = rawRows[i];
+    const maMH = String(r[1]).trim();
+    const tenMH = String(r[2]).trim();
+    const soTC   = Number(r[5]);
+    const batBuoc = String(r[6]).trim().toLowerCase() === 'x';
+    const nhom   = String(r[7]).trim();
+    const gv     = String(r[8]).trim();
+    const lop    = String(r[9]).trim();
+    const buoiHocRaw = String(r[10]).trim();
+    const daHoc  = String(r[11]).trim().toLowerCase() === 'x';
+    const sessions = parseBuoiHoc(buoiHocRaw);
+    result.push({ maMH, tenMH, soTC, batBuoc, nhom, gv, lop, sessions, daHoc, hasSchedule: sessions.length > 0 });
+  }
+
+  subjects = result;
+  subjects.forEach((s, i) => {
+    colorMap[s.maMH] = PALETTE[i % PALETTE.length];
+  });
+
+  allMinDates = [];
+  for (const s of subjects) {
+    for (const sess of s.sessions) {
+      allMinDates.push(sess.fromDate, sess.toDate);
+    }
+  }
+
+  if (allMinDates.length) {
+    const minDate = new Date(Math.min(...allMinDates.map(d => d.getTime())));
+    currentMonday = getMonday(minDate);
+  } else {
+    currentMonday = getMonday(new Date());
+  }
+
+  selectedSubjects = new Set(
+    subjects.filter(s => s.daHoc && s.hasSchedule).map(s => s.maMH)
+  );
+
+  const ua = document.getElementById('upload-area');
+  ua.innerHTML = `
+    <div class="upload-success">
+      <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+      <span>DSDKMH_Mau.xlsx</span>
+      <button onclick="event.stopPropagation();document.getElementById('file-input').click()">Đổi</button>
+    </div>`;
+
+  document.getElementById('credits-panel').style.display = 'block';
+  document.getElementById('list-controls').style.display = 'flex';
+  document.getElementById('welcome-state').style.display = 'none';
+  document.getElementById('timetable-state').style.display = 'flex';
+
+  renderSubjectList();
+  renderTimetable();
 }
 
 document.addEventListener('DOMContentLoaded', init);
