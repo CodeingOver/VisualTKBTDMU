@@ -1,5 +1,12 @@
 # Nhật ký thay đổi – Visual TKB DMU
 
+### [v0.4.1] – 2026-07-23
+
+#### - **[Sửa lỗi]** Sửa lỗi cú pháp Octal literal trong JavaScript
+  - Thay thế hằng số `05` bằng `5` trong hàm `startTimeToTiet` (dòng 80 tại [app.js](file:///d:/CodeWeb/VisualTKBTDMU/app.js#L80)) để loại bỏ lỗi `Octal literals are not allowed` khi chạy ở chế độ Strict Mode hoặc ES Module.
+
+---
+
 ### [v0.4.0] – 2026-07-21
 
 #### - **[Thêm mới]** Hiển thị Khung giờ dưới Tiết & Trình tạo File Excel mẫu

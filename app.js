@@ -77,7 +77,7 @@ function startTimeToTiet(hhmm) {
   if (min <= 17 * 60 + 20) return 11;  // 16:35 -> Tiết 11
   if (min <= 18 * 60 + 15) return 12;  // 17:25 -> Tiết 12
   if (min <= 19 * 60 + 15) return 13;  // 18:30 -> Tiết 13
-  if (min <= 20 * 60 + 05) return 14;  // 19:20 -> Tiết 14
+  if (min <= 20 * 60 + 5)  return 14;  // 19:20 -> Tiết 14
   return 15;                           // 20:10 -> Tiết 15
 }
 
